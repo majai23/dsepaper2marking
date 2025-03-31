@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DSE Writing Feedback Tool (GPT-4o)</title>
+  <title>DSE Writing Feedback Tool (Streaming)</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
     label { font-weight: bold; margin-top: 20px; display: block; }
@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h1>DSE Writing Feedback Tool (GPT-4o)</h1>
+  <h1>DSE Writing Feedback Tool (Streaming)</h1>
 
   <label for="question">Writing Question</label>
   <input id="question" placeholder="e.g. Should school uniforms be mandatory?" />
@@ -88,7 +88,6 @@
       const bandText = data1.bandAnalysis || "⚠️ No feedback returned.";
       feedbackEl.innerText = bandText;
 
-      // Improved regex for extracting band scores
       const matchBands = bandText.match(/Band score[^\d]*(\d)/gi);
       const bands = matchBands ? matchBands.map(m => parseInt(m.match(/\d/)[0])) : [];
 
@@ -114,22 +113,34 @@
 
   async function brushUp() {
     const writing = document.getElementById("studentWriting").value;
-    const topic = document.getElementById("question").value;
     const brushup = document.getElementById("brushup");
 
-    brushup.innerText = "🔄 Rewriting with GPT-4...";
-
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topic: topic || "DSE Writing Task", type: "article", level: "5**", original: writing })
-    });
+    brushup.innerText = "🔄 Rewriting paragraph by paragraph...";
 
     try {
-      const data = await res.json();
-      brushup.innerText = data.writing || "⚠️ Rewrite failed.";
-    } catch {
-      brushup.innerText = "❌ Server error.";
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ original: writing })
+      });
+
+      if (!response.ok) {
+        brushup.innerText = `❌ Server error (${response.status})`;
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      brushup.innerText = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        brushup.innerText += chunk;
+      }
+    } catch (err) {
+      brushup.innerText = "❌ Failed to connect to server.";
     }
   }
 </script>
