@@ -5,35 +5,33 @@ export async function POST(req) {
   try {
     const { paragraph, position = "body" } = await req.json();
 
-    if (!paragraph || paragraph.trim().length < 5) {
+    const clean = (s) => s.trim().toLowerCase();
+    const isSalutation = position === "salutation" || /^dear\b|^to whom|^sir|madam/i.test(clean(paragraph));
+    const isClosing = position === "closing" || /yours|sincerely|faithfully|regards/i.test(clean(paragraph));
+
+    if (!paragraph || clean(paragraph).length < 5) {
       return new Response(JSON.stringify({ paragraphAnalysis: "⚠️ Paragraph too short or empty to evaluate." }), { status: 200 });
     }
 
-    let customInstruction = "";
-    if (position === "salutation") {
-      customInstruction = "This paragraph is a salutation. Evaluate only its tone and formality. Do not comment on content development or organisation.";
-    } else if (position === "closing") {
-      customInstruction = "This paragraph is a complimentary close. Evaluate only its appropriateness in tone and formality. Do not rate it on structure or development.";
-    } else {
-      customInstruction = "You must quote 1–2 phrases directly from the paragraph to justify your evaluation of Content, Language, and Organisation.";
+    if (isSalutation || isClosing) {
+      const type = isSalutation ? "Salutation" : "Complimentary Close";
+      const analysis = `✅ Content: Not applicable for ${type.toLowerCase()}s.\n✅ Language: Appropriate tone and formality for a formal letter.\n✅ Organisation: Properly positioned in the structure of a formal letter.`;
+      return new Response(JSON.stringify({ paragraphAnalysis: analysis }), { status: 200 });
     }
 
     const prompt = `
-You are a professional HKDSE English Paper 2 examiner. You are given one paragraph from a student's writing.
+You are a professional HKDSE English Paper 2 examiner.
 
-Position of this paragraph: ${position.toUpperCase()}
-
-${customInstruction}
+You are given one paragraph from a student's writing (${position.toUpperCase()}).
 
 Evaluate how this paragraph contributes to:
 1. Content (C)
 2. Language (L)
 3. Organisation (O)
 
-⚠️ Use the student's actual words (1–2 phrases per category) to support your comments.
+⚠️ You MUST quote 1–2 phrases from the student's paragraph to support each category.
 
-Respond in the following format:
-
+Respond in this format:
 ✅ Content: ...
 ✅ Language: ...
 ✅ Organisation: ...
