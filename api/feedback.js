@@ -5,45 +5,31 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing writing or level" });
   }
 
-  const max_tokens = 1400;
+  const max_tokens = 1000;
 
   const scoreTable = originalScores
     ? `Original Marker Scores:
 
 | Category      | 1st Marker | 2nd Marker |
 |---------------|------------|------------|
-| Content (C)   | ${originalScores.C1}          | ${originalScores.C2}          |
-| Language (L)  | ${originalScores.L1}          | ${originalScores.L2}          |
-| Organisation (O)| ${originalScores.O1}       | ${originalScores.O2}          |`
+| Content (C)   | ${originalScores.C1} | ${originalScores.C2} |
+| Language (L)  | ${originalScores.L1} | ${originalScores.L2} |
+| Organisation (O) | ${originalScores.O1} | ${originalScores.O2} |`
     : "";
 
   const prompt = `
-You are a professional HKDSE English Paper 2 examiner.
+You are an HKDSE English examiner.
 
-Evaluate the student's writing below based on the official HKDSE Paper 2 marking rubrics (${paperType}).
+Evaluate the writing below using HKDSE ${paperType} Rubrics. ${originalScores ? "Compare with the given marker scores." : ""}
 
 ${scoreTable}
 
-Please provide the response in this format:
-
-📊 Original Marker Scores (if provided)
-
-✅ 📌 Domain 1: Content (C)
-- Rubric Level Explanation
-- Strengths
-- Weaknesses
-- Verdict
-
-✅ 📌 Domain 2: Language (L)
-...
-
-✅ 📌 Domain 3: Organisation (O)
-...
-
-🏁 Final Judgement:
-- Suggested bands per category
-- Overall level (e.g. 5*, borderline 5**)
-- 2–3 practical suggestions to improve to 5**
+Respond in this format:
+📊 Marker Scores
+✅ 📌 Content (C): [Strengths, Weaknesses, Verdict]
+✅ 📌 Language (L): ...
+✅ 📌 Organisation (O): ...
+🏁 Final Judgement: [Suggested bands, final level, tips to reach 5**]
 
 Student Writing:
 ${writing}
@@ -58,10 +44,10 @@ ${writing}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a professional HKDSE English writing examiner." },
+          { role: "system", content: "You are a concise, accurate HKDSE English examiner." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.4,
+        temperature: 0.3,
         max_tokens
       })
     });
@@ -72,6 +58,6 @@ ${writing}
     res.status(200).json({ feedback });
   } catch (err) {
     console.error("GPT-4o Feedback Error:", err);
-    res.status(500).json({ error: "Server error while generating feedback" });
+    res.status(504).json({ error: "Timeout or server error while generating feedback" });
   }
 }
