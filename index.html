@@ -108,8 +108,7 @@ async function generateFeedback() {
       feedbackEl.innerText = "❌ Error during quick feedback.";
     }
   } else {
-    const paragraphs = writing.split(/
-{2,}/).filter(p => p.trim().length > 0);
+    const paragraphs = writing.split(/\n{2,}/).filter(p => p.trim().length > 0);
     cachedInsights = [];
     feedbackEl.innerText = "";
     for (let i = 0; i < paragraphs.length; i++) {
@@ -142,8 +141,7 @@ async function brushUp(level = "5**") {
   const writing = document.getElementById("studentWriting").value;
   const outputBox = level === "5" ? document.getElementById("brushup5") : document.getElementById("brushup5star");
   outputBox.innerText = "";
-  const paragraphs = writing.split(/
-{2,}/).filter(p => p.trim().length > 0);
+  const paragraphs = writing.split(/\n{2,}/).filter(p => p.trim().length > 0);
   for (let i = 0; i < paragraphs.length; i++) {
     outputBox.innerText += `
 🔄 Rewriting paragraph ${i + 1} to Level ${level}...
