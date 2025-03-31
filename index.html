@@ -26,9 +26,8 @@
 
   <label for="feedbackMode">Feedback Mode</label>
   <select id="feedbackMode">
-    <option value="quick">Quick Feedback (C / L / O)</option>
-    <option value="detailed">Detailed Feedback (with examples)</option>
-    <option value="accurate">Accurate Feedback (paragraph-by-paragraph)</option>
+    <option value="quick">Quick Feedback</option>
+    <option value="detailed">Detailed Feedback (paragraph by paragraph)</option>
   </select>
 
   <div class="grid">
@@ -86,7 +85,7 @@
     feedbackEl.innerText = "🔄 Generating feedback...";
     judgementEl.innerText = "";
 
-    if (mode === "accurate") {
+    if (mode === "detailed") {
       const paragraphs = writing.split(/\n{2,}/).filter(p => p.trim().length > 0);
       const insights = [];
 
@@ -118,12 +117,13 @@
       } catch {
         feedbackEl.innerText = "❌ Failed to summarize band scores.";
       }
+
     } else {
       try {
         const res = await fetch("/api/bands", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ writing, originalScores, paperType: "Part A", mode })
+          body: JSON.stringify({ writing, originalScores, paperType: "Part A", mode: "quick" })
         });
         const data = await res.json();
         const bandText = data.bandAnalysis || "⚠️ No feedback returned.";
@@ -178,3 +178,4 @@
 </script>
 </body>
 </html>
+
