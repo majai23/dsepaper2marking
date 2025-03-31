@@ -74,18 +74,19 @@
 
     feedback.innerText = "🔄 Generating detailed feedback...";
 
-    const res = await fetch("/api/feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ writing, level: "5**", mode, originalScores, paperType: "Part A" })
-    });
-
     try {
-      const data = await res.json();
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ writing, level: "5**", mode, originalScores, paperType: "Part A" })
+      });
+
+      const clone = response.clone();
+      const data = await response.json();
       feedback.innerText = data.feedback || "⚠️ No feedback returned.";
     } catch (err) {
-      const text = await res.text();
-      feedback.innerText = "❌ Server error: " + text;
+      const text = await err.response?.clone()?.text?.();
+      feedback.innerText = "❌ Server error.";
     }
   }
 
