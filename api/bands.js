@@ -1,11 +1,11 @@
 
-// /api/bands.js - full essay quick feedback based on HKDSE Paper 2 rubric
+// /api/bands.js - full essay quick feedback with task-aware scoring
 
 export const runtime = 'edge';
 
 export async function POST(req) {
   try {
-    const { writing, mode = "quick", paperType = "Part A", originalScores = null } = await req.json();
+    const { writing, question = "", mode = "quick", paperType = "Part A", originalScores = null } = await req.json();
 
     if (!writing) {
       return new Response(JSON.stringify({ error: "No writing provided." }), { status: 400 });
@@ -13,27 +13,26 @@ export async function POST(req) {
 
     const prompt = `
 You are an experienced HKDSE English Paper 2 marker.
-Please evaluate the following student's ${paperType} writing.
+You are given a student's writing and the task question.
 
-Assign band scores from 1 to 7 for each of the following:
+Writing Task:
+${question}
+
+Student's Response:
+${writing}
+
+Assign band scores from 1 to 7 for:
 - Content (C)
 - Language (L)
 - Organisation (O)
 
-Respond in this format:
-
+Use this format:
 **Band Scores:**
 C: _
 L: _
 O: _
 
-Then provide ${mode === "quick" ? "a short justification (2–3 sentences) for each domain." : "detailed analysis with specific examples."}
-
-If original band scores were given by two markers, feel free to compare their scores with your evaluation:
-${originalScores ? JSON.stringify(originalScores, null, 2) : "N/A"}
-
-Student Writing:
-${writing}
+Then provide ${mode === "quick" ? "a short justification (2–3 sentences per domain)." : "detailed analysis with specific examples."}
 `;
 
     const res = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
