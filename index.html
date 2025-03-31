@@ -74,7 +74,7 @@
         const res = await fetch("/api/bands", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ writing, paperType: "Part A", mode: "quick" })
+          body: JSON.stringify({ writing, question: document.getElementById("question").value, paperType: "Part A", mode: "quick" })
         });
         const data = await res.json();
         feedbackEl.innerText = data.bandAnalysis || "⚠️ No feedback returned.";
@@ -107,6 +107,11 @@
   }
 
   async function summarizeBands() {
+    const mode = document.getElementById("feedbackMode").value;
+    if (mode !== 'detailed') {
+      alert("⚠️ Summarize Scores is only available after Detailed Feedback analysis.");
+      return;
+    }
     const feedbackEl = document.getElementById("feedback");
     const judgementEl = document.getElementById("judgement");
 
