@@ -118,7 +118,7 @@
       const res = await fetch("/api/bands-summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ insights: cachedInsights, mode: "detailed" })
+        body: JSON.stringify({ insights: cachedInsights, question: document.getElementById("question").value.trim(), mode: "detailed" })
       });
       const data = await res.json();
       feedbackEl.innerText += data.bandAnalysis || "⚠️ No summary returned.";
