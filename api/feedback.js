@@ -5,28 +5,32 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing writing or level" });
   }
 
-  const max_tokens = mode === "detailed" ? 1400 : 1000;
+  const max_tokens = mode === "detailed" ? 1000 : 600;
 
   const prompt = mode === "detailed"
     ? `You are an HKDSE English Paper 2 examiner.
 
-Evaluate the following student writing. Assign band scores from 1–7 for Content, Language, and Organisation.
+Evaluate the student's writing below and be concise. Assign band scores (1–7) for:
+- Content (C)
+- Language (L)
+- Organisation (O)
 
-Then give short comments on strengths and weaknesses in each domain.
+Give 1–2 sentence comments on each:
+✅ What is good
+✘ What needs improvement
 
-End with a list of suggestions to improve the writing to Level 5 and 5**.
+Finish with 2–3 short suggestions to improve to Level 5 and 5**.
 
-Student Writing:
+Student writing:
 ${writing}`
     : `You are an HKDSE English Paper 2 examiner.
 
-Give brief feedback on the student's writing under 3 categories:
+Briefly comment on this student's writing in 3 areas:
+C: Content
+L: Language
+O: Organisation
 
-C: (Content)  
-L: (Language)  
-O: (Organisation)
-
-Student Writing:
+Student writing:
 ${writing}`;
 
   try {
@@ -38,10 +42,10 @@ ${writing}`;
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a strict and supportive HKDSE English Paper 2 examiner." },
+          { role: "system", content: "You are a concise but helpful HKDSE English examiner." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.4,
+        temperature: 0.3,
         max_tokens
       })
     });
@@ -51,7 +55,7 @@ ${writing}`;
     if (!feedback) return res.status(500).json({ error: "No feedback returned" });
     res.status(200).json({ feedback });
   } catch (err) {
-    console.error("GPT-4o Feedback Error:", err);
-    res.status(500).json({ error: "Server error while generating feedback" });
+    console.error("GPT-4o Feedback Timeout:", err);
+    res.status(504).json({ error: "Timeout or server error while generating feedback" });
   }
 }
