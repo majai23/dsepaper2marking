@@ -1,7 +1,3 @@
-
-// bands-summarize.js
-
-import { OpenAIStream, StreamingTextResponse } from "ai";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -21,9 +17,7 @@ export async function POST(req) {
     .filter(p => typeof p === "string" && p.trim() !== "")
     .map((p, idx) => `Paragraph ${idx + 1} Feedback:
 ${p}`)
-    .join("
-
-");
+    .join("\n\n");
 
   const prompt = `
 You are an HKDSE English Paper 2 expert marker.
@@ -59,9 +53,9 @@ O:
 3.
 `;
 
-  const response = await openai.chat.completions.create({
+  const result = await openai.chat.completions.create({
     model: "gpt-4",
-    stream: true,
+    stream: false,
     messages: [
       {
         role: "system",
@@ -74,6 +68,8 @@ O:
     ],
   });
 
-  const stream = OpenAIStream(response);
-  return new StreamingTextResponse(stream);
+  const summary = result.choices[0]?.message?.content || "⚠️ No summary returned.";
+  return new Response(JSON.stringify({ bandAnalysis: summary }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
