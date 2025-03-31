@@ -88,8 +88,8 @@
       const bandText = data1.bandAnalysis || "⚠️ No feedback returned.";
       feedbackEl.innerText = bandText;
 
-      // Extract numeric band scores
-      const matchBands = bandText.match(/Band score: \*\*?(\d)/g);
+      // Improved regex for extracting band scores
+      const matchBands = bandText.match(/Band score[^\d]*(\d)/gi);
       const bands = matchBands ? matchBands.map(m => parseInt(m.match(/\d/)[0])) : [];
 
       if (bands.length === 3) {
