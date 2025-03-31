@@ -41,15 +41,11 @@ export async function POST(req) {
     });
 
     const data = await response.json();
-    const output = data.choices?.[0]?.message?.content?.trim();
+    const rawOutput = data.choices?.[0]?.message?.content || "⚠️ No response content from Azure.";
+    const insights = rawOutput.split(/\n(?=🔎|✅|❌|\*\*|Paragraph)/).filter(p => p.trim());
 
-    if (!output) {
-      return new Response(JSON.stringify({ insights: Array(paragraphs.length).fill("⚠️ Error: No feedback returned.") }), { status: 200 });
-    }
-
-    const insights = output.split(/\n(?=🔎|✅|❌|\*\*|Paragraph)/).filter(p => p.trim());
-    return new Response(JSON.stringify({ insights }), { status: 200 });
+    return new Response(JSON.stringify({ rawOutput, insights }), { status: 200 });
   } catch (err) {
-    return new Response(JSON.stringify({ insights: Array(paragraphs.length).fill("⚠️ Error: " + err.message) }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
