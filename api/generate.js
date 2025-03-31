@@ -2,15 +2,15 @@ export default async function handler(req, res) {
   const { topic, type, level, original } = req.body;
 
   const prompt = `
-You are an HKDSE English writing examiner and coach.
+You are an HKDSE English Paper 2 rewriting coach.
 
-Your task is to rewrite the student's original writing to a strong Level 5**.
+Your job is to polish the student's writing to a strong Level 5**.
 
-Use more precise vocabulary, clearer structure, and logical flow. Keep the same ideas.
+Make it more fluent, precise, and natural. Improve vocabulary and clarity.
 
 Highlight all improvements using **bold** formatting.
 
-Student's original writing:
+Student's writing:
 ${original}
 `;
 
@@ -23,11 +23,11 @@ ${original}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a professional HKDSE English Paper 2 rewriting coach." },
+          { role: "system", content: "You are an experienced HKDSE English rewriting tutor." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.7,
-        max_tokens: 1600
+        temperature: 0.6,
+        max_tokens: 1000
       })
     });
 
