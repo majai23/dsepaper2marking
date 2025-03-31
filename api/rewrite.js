@@ -14,6 +14,8 @@ Improve clarity, word choice, sentence structure, and flow.
 
 Highlight all improvements using **bold** formatting.
 
+If the paragraph is a salutation or complimentary close (e.g. “Dear Sir”, “Yours faithfully”), adjust the tone to match the overall formality of the writing.
+
 Original paragraph:
 ${paragraph}
 `;
