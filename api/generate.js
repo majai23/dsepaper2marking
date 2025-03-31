@@ -1,42 +1,57 @@
 export default async function handler(req, res) {
-  const { topic, type, level, original } = req.body;
+  const { original } = req.body;
 
-  const prompt = `
+  if (!original) {
+    return res.status(400).json({ error: "Missing input writing" });
+  }
+
+  const paragraphs = original.split(/\n{2,}/).filter(p => p.trim().length > 0);
+  const rewrittenParagraphs = [];
+
+  for (const para of paragraphs) {
+    const prompt = `
 You are an HKDSE English Paper 2 rewriting coach.
 
-Your job is to polish the student's writing to a strong Level 5**.
+Polish the following paragraph to a strong Level 5**.
 
-Make it more fluent, precise, and natural. Improve vocabulary and clarity.
+Improve clarity, word choice, sentence structure, and flow.
 
 Highlight all improvements using **bold** formatting.
 
-Student's writing:
-${original}
+Original paragraph:
+${para}
 `;
 
-  try {
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": process.env.AZURE_OPENAI_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: "You are an experienced HKDSE English rewriting tutor." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.6,
-        max_tokens: 1000
-      })
-    });
+    try {
+      const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.AZURE_OPENAI_KEY
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: "system", content: "You are a helpful HKDSE English rewriting assistant." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.6,
+          max_tokens: 500
+        })
+      });
 
-    const data = await response.json();
-    const writing = data.choices?.[0]?.message?.content;
-    if (!writing) return res.status(500).json({ error: "No output generated" });
-    res.status(200).json({ writing });
-  } catch (err) {
-    console.error("Brush-up GPT-4o Error:", err);
-    res.status(500).json({ error: "Server error while rewriting" });
+      const data = await response.json();
+      const rewritten = data.choices?.[0]?.message?.content;
+      if (!rewritten) {
+        rewrittenParagraphs.push("⚠️ Failed to rewrite paragraph.");
+      } else {
+        rewrittenParagraphs.push(rewritten.trim());
+      }
+    } catch (err) {
+      console.error("Error rewriting paragraph:", err);
+      rewrittenParagraphs.push("❌ Error processing this paragraph.");
+    }
   }
+
+  const finalOutput = rewrittenParagraphs.join("\n\n");
+  res.status(200).json({ writing: finalOutput });
 }
