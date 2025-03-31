@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { paragraph } = req.body;
+  const { paragraph, level = "5**" } = req.body;
 
   if (!paragraph) {
     return res.status(400).json({ error: "Missing paragraph" });
@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const prompt = `
 You are an HKDSE English Paper 2 rewriting coach.
 
-Polish the following paragraph to a strong Level 5**.
+Polish the following paragraph to a strong Level ${level}.
 
 Improve clarity, word choice, sentence structure, and flow.
 
