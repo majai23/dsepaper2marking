@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DSE Writing Feedback Tool (GPT-4)</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+    label { font-weight: bold; margin-top: 20px; display: block; }
+    textarea, input, select, button, pre {
+      width: 100%; margin-top: 5px; padding: 10px; font-size: 14px;
+    }
+    button { background-color: #2563eb; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #1e40af; }
+    pre { background: #f9fafb; border: 1px solid #d1d5db; min-height: 80px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>DSE Writing Feedback Tool (GPT-4)</h1>
+
+  <label for="question">Writing Question</label>
+  <input id="question" placeholder="e.g. Should school uniforms be mandatory?" />
+
+  <label for="studentWriting">Your Writing</label>
+  <textarea id="studentWriting" rows="10" placeholder="Paste or write your full response here..."></textarea>
+
+  <label for="feedbackMode">Feedback Mode</label>
+  <select id="feedbackMode">
+    <option value="quick">Quick Feedback (C / L / O)</option>
+    <option value="detailed">Detailed Feedback (Band Scores + Suggestions)</option>
+  </select>
+
+  <button onclick="markWriting()">Generate Feedback</button>
+  <pre id="feedback">Feedback will appear here...</pre>
+
+  <button onclick="brushUp()">Brush-up Writing to 5**</button>
+  <pre id="brushup">Your improved writing will appear here...</pre>
+
+<script>
+  async function markWriting() {
+    const writing = document.getElementById("studentWriting").value;
+    const mode = document.getElementById("feedbackMode").value;
+    const feedback = document.getElementById("feedback");
+
+    feedback.innerText = "🔄 Generating feedback...";
+
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ writing, level: "5**", mode })
+    });
+
+    try {
+      const data = await res.json();
+      feedback.innerText = data.feedback || "⚠️ No feedback returned.";
+    } catch (err) {
+      const text = await res.text();
+      feedback.innerText = "❌ Server error: " + text;
+    }
+  }
+
+  async function brushUp() {
+    const writing = document.getElementById("studentWriting").value;
+    const topic = document.getElementById("question").value;
+    const brushup = document.getElementById("brushup");
+
+    brushup.innerText = "🔄 Rewriting with GPT-4...";
+
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic: topic || "DSE Writing Task", type: "article", level: "5**", original: writing })
+    });
+
+    try {
+      const data = await res.json();
+      brushup.innerText = data.writing || "⚠️ Rewrite failed.";
+    } catch {
+      brushup.innerText = "❌ Server error.";
+    }
+  }
+</script>
+</body>
+</html>
