@@ -32,10 +32,10 @@
 
   <div class="grid">
     <div><label>C1<input id="C1" type="number" min="1" max="7" /></label></div>
-    <div><label>C2<input id="L1" type="number" min="1" max="7" /></label></div>
-    <div><label>L1<input id="O1" type="number" min="1" max="7" /></label></div>
-    <div><label>L2<input id="C2" type="number" min="1" max="7" /></label></div>
-    <div><label>O1<input id="L2" type="number" min="1" max="7" /></label></div>
+    <div><label>C2<input id="C2" type="number" min="1" max="7" /></label></div>
+    <div><label>L1<input id="L1" type="number" min="1" max="7" /></label></div>
+    <div><label>L2<input id="L2" type="number" min="1" max="7" /></label></div>
+    <div><label>O1<input id="O1" type="number" min="1" max="7" /></label></div>
     <div><label>O2<input id="O2" type="number" min="1" max="7" /></label></div>
   </div>
 
@@ -53,10 +53,10 @@
 
     const scores = {
       C1: document.getElementById("C1").value,
-      L1: document.getElementById("L1").value,
-      O1: document.getElementById("O1").value,
       C2: document.getElementById("C2").value,
+      L1: document.getElementById("L1").value,
       L2: document.getElementById("L2").value,
+      O1: document.getElementById("O1").value,
       O2: document.getElementById("O2").value
     };
 
@@ -64,10 +64,10 @@
     if (scores.C1 && scores.C2 && scores.L1 && scores.L2 && scores.O1 && scores.O2) {
       originalScores = {
         C1: Number(scores.C1),
-        L1: Number(scores.L1),
-        O1: Number(scores.O1),
         C2: Number(scores.C2),
+        L1: Number(scores.L1),
         L2: Number(scores.L2),
+        O1: Number(scores.O1),
         O2: Number(scores.O2)
       };
     }
