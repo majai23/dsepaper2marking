@@ -10,9 +10,16 @@ export async function POST(req) {
     }
 
     const filteredInsights = insights.filter(text =>
-      text.includes("✅ Content:") && text.includes("✅ Language:") && text.includes("✅ Organisation:")
-      && !text.toLowerCase().includes("not applicable")
+      typeof text === "string" &&
+      text.includes("✅ Content:") &&
+      text.includes("✅ Language:") &&
+      text.includes("✅ Organisation:") &&
+      !text.toLowerCase().includes("not applicable")
     );
+
+    if (filteredInsights.length < 2) {
+      return new Response(JSON.stringify({ bandAnalysis: "⚠️ Not enough detailed paragraph evaluations for scoring." }), { status: 400 });
+    }
 
     const summaryPrompt = `
 You are a senior HKDSE English examiner.
@@ -26,41 +33,46 @@ Rubric guidance:
 - Band 7 = Excellent, well-developed, fluent and relevant with near-perfect accuracy
 - Band 6 = Strong performance with occasional issues, task fulfilled
 - Band 5 = Competent, some lapses but clear meaning and structure
-- DO NOT penalise salutation or closing phrases. They are expected in formal letters.
-- If 70%+ of content paragraphs show control and relevance, Band 6–7 is valid.
+- DO NOT penalise salutation or closing phrases.
 
-Avoid repeating the paragraph feedback again. Just summarise overall strengths and weaknesses.
+Here are the paragraph evaluations:
+${filteredInsights.join("\n\n")}
 
-Respond in this format:
+Now provide:
 
-**Band Scores:**
-C: _
-L: _
-O: _
+Band Scores:
+C: ?
+L: ?
+O: ?
 
-**Justification:** ...
-`;
+Justification:
+Explain why each band score was awarded, referring to examples and performance levels only.`.trim();
 
-    const res = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": process.env.AZURE_OPENAI_KEY
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
+        model: "gpt-4",
         messages: [
-          { role: "system", content: "You are an HKDSE Paper 2 scorer who only responds with band scores and summary." },
-          { role: "user", content: summaryPrompt + filteredInsights.join("\n\n") }
+          { role: "system", content: "You are a strict and precise HKDSE examiner." },
+          { role: "user", content: summaryPrompt }
         ],
-        temperature: 0.2,
-        max_tokens: 800
-      })
+        temperature: 0.3,
+      }),
     });
 
-    const data = await res.json();
-    const bandAnalysis = data.choices?.[0]?.message?.content?.trim() || "⚠️ No summary returned.";
-    return new Response(JSON.stringify({ bandAnalysis }), { status: 200 });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content?.trim() || "⚠️ No summary returned.";
+
+    return new Response(JSON.stringify({ bandAnalysis: reply }), {
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error("Summarizer Error:", error);
+    return new Response(JSON.stringify({ bandAnalysis: "⚠️ Server error while summarizing bands." }), { status: 500 });
   }
 }
