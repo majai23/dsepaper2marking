@@ -6,24 +6,23 @@ export async function POST(req) {
   try {
     const { paragraph, position = "body" } = await req.json();
 
-    if (!paragraph) {
-      return new Response(JSON.stringify({ error: "Missing paragraph" }), { status: 400 });
+    if (!paragraph || paragraph.trim().length < 5) {
+      return new Response(JSON.stringify({ paragraphAnalysis: "⚠️ Paragraph too short or empty to evaluate." }), { status: 200 });
     }
 
     const prompt = `
 You are an HKDSE English Paper 2 examiner.
 
-You will evaluate ONE paragraph of a student's writing. This is the ${position} paragraph of the essay.
+Evaluate ONE paragraph of a student's writing. This paragraph functions as the ${position}.
 
-Your job is to analyze how this paragraph contributes to:
+Assess how this paragraph contributes to the overall performance in:
 1. Content (C)
 2. Language (L)
 3. Organisation (O)
 
-Do NOT give band scores directly. Instead, explain briefly (in 1-2 sentences each) how this paragraph affects the overall performance in each domain.
+✅ Use 1–2 direct quotes or phrases from the paragraph to justify your feedback.
 
-Use this format:
-
+Do NOT give band scores. Instead, give brief evaluations using this format:
 ✅ Content: ...
 ✅ Language: ...
 ✅ Organisation: ...
@@ -49,7 +48,7 @@ ${paragraph}
     });
 
     const data = await res.json();
-    const paragraphAnalysis = data.choices?.[0]?.message?.content?.trim();
+    const paragraphAnalysis = data.choices?.[0]?.message?.content?.trim() || "⚠️ No analysis returned.";
     return new Response(JSON.stringify({ paragraphAnalysis }), { status: 200 });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
