@@ -1,47 +1,43 @@
 
-// Improved /api/bands-summarize.js with logging and error handling
-
 export const runtime = 'edge';
 
 export async function POST(req) {
   try {
-    const { insights, mode = "detailed" } = await req.json();
-    console.log("✅ Received insights for summarization:", insights?.length || "none");
-    if (!insights || !Array.isArray(insights) || insights.length === 0) {
-      return new Response(JSON.stringify({ bandAnalysis: "⚠️ No insights available for summarization." }), { status: 200 });
+    const { insights = [], mode = "detailed" } = await req.json();
+
+    if (!Array.isArray(insights) || insights.length === 0) {
+      return new Response(JSON.stringify({ bandAnalysis: "⚠️ No paragraph insights received." }), { status: 400 });
     }
 
-    const formattedInsights = insights
-      .map((p, i) => `🔹 Paragraph ${i + 1}:
-${p}`)
+    const cleanInsights = insights
+      .filter(text => text.includes("✅ Content:") && text.includes("✅ Language:") && text.includes("✅ Organisation:"))
       .join("\n\n");
 
-    const summaryPrompt = `
-You are an expert HKDSE English Paper 2 marker.
-You will be given paragraph-level feedback and must assign band scores for:
+    const prompt = `
+You are a professional HKDSE English writing examiner.
+
+The following are paragraph-by-paragraph analyses of a student's writing:
+
+${cleanInsights}
+
+Based on these insights, assign band scores (1 to 7) for:
 
 - Content (C)
 - Language (L)
 - Organisation (O)
 
-Use the official rubric (Band 1–7). Respond in this format:
+Summarise key strengths and weaknesses per domain, quoting from the analysis if needed.
 
+Respond in this format:
 **Band Scores:**
-C: _  
-L: _  
+C: _
+L: _
 O: _
 
-Then explain your judgement ${
-      mode === "quick"
-        ? "briefly (2–3 sentences per domain)."
-        : "with examples from the student's writing."
-    }
-
-Paragraph-level feedback:
-${formattedInsights}
+Then follow with concise justification.
 `;
 
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+    const res = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,21 +45,18 @@ ${formattedInsights}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a senior HKDSE examiner." },
-          { role: "user", content: summaryPrompt }
+          { role: "system", content: "You are a senior HKDSE English writing summarizer." },
+          { role: "user", content: prompt }
         ],
-        temperature: 0.5,
-        max_tokens: 1000
+        temperature: 0.3,
+        max_tokens: 700
       })
     });
 
-    const data = await response.json();
-    console.log("🧠 GPT summary response:", data);
-
-    const result = data.choices?.[0]?.message?.content?.trim();
-    return new Response(JSON.stringify({ bandAnalysis: result || "⚠️ No summary returned." }), { status: 200 });
+    const data = await res.json();
+    const bandAnalysis = data.choices?.[0]?.message?.content?.trim() || "⚠️ No summary returned.";
+    return new Response(JSON.stringify({ bandAnalysis }), { status: 200 });
   } catch (err) {
-    console.error("❌ Error in /api/bands-summarize:", err.message);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
