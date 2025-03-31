@@ -12,6 +12,8 @@ Rewrite ONLY the following paragraph to a strong Level ${level} standard.
 
 Improve clarity, tone, word choice, sentence structure, and logical flow.
 
+Then, explain the changes made in 2–5 bullet points, showing what was improved and why.
+
 Focus ONLY on this paragraph. Do not merge, summarize, or anticipate other paragraphs.
 
 If the paragraph is a salutation or complimentary close (e.g., “Dear Sir”, “Yours faithfully”), adjust it to match the appropriate tone and formality of the writing.
@@ -20,7 +22,15 @@ Even if the paragraph is very short or a standalone line, rewrite it meaningfull
 
 Highlight all improvements using **bold** formatting.
 
-Original paragraph:
+Format your reply like this:
+**Rewritten Paragraph:**
+<new paragraph with **bold** enhancements>
+
+**Improvements Made:**
+- Point 1...
+- Point 2...
+
+Here is the original paragraph:
 ${paragraph}
 `;
 
@@ -37,7 +47,7 @@ ${paragraph}
           { role: "user", content: prompt }
         ],
         temperature: 0.5,
-        max_tokens: 400
+        max_tokens: 600
       })
     });
 
