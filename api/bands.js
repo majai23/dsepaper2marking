@@ -1,47 +1,42 @@
-export default async function handler(req, res) {
-  const { writing, originalScores, paperType = "Part A", mode = "detailed" } = req.body;
 
-  const baseInstruction =
-    mode === "quick"
-      ? `Give band scores for Content (C), Language (L), and Organisation (O), each from 1 to 7.
-Briefly explain in 2–3 sentences why the candidate earned that band in each domain. Be concise, focus on overall performance.
+// /api/bands.js - full essay quick feedback based on HKDSE Paper 2 rubric
 
-DO NOT quote specific examples or lines from the writing. This is a summary-level response.`
-      : `Give band scores for Content (C), Language (L), and Organisation (O), each from 1 to 7.
-Use concrete examples or specific phrases from the writing to support your assessment in each domain.
-This is a full detailed feedback.`;
+export const runtime = 'edge';
 
-  const prompt = `
-You are a Hong Kong DSE English Paper 2 marker.
+export async function POST(req) {
+  try {
+    const { writing, mode = "quick", paperType = "Part A", originalScores = null } = await req.json();
 
-Mark the following student writing using the official HKDSE Paper 2 rubrics.
+    if (!writing) {
+      return new Response(JSON.stringify({ error: "No writing provided." }), { status: 400 });
+    }
 
-Paper Type: ${paperType}
-${baseInstruction}
+    const prompt = `
+You are an experienced HKDSE English Paper 2 marker.
+Please evaluate the following student's ${paperType} writing.
 
-Return your feedback in this format:
+Assign band scores from 1 to 7 for each of the following:
+- Content (C)
+- Language (L)
+- Organisation (O)
 
-📊 Band Scores:
-C: <score>
-L: <score>
-O: <score>
+Respond in this format:
 
-Feedback:
-✅ 📌 Content (C):
-<explanation>
+**Band Scores:**
+C: _
+L: _
+O: _
 
-✅ 📌 Language (L):
-<explanation>
+Then provide ${mode === "quick" ? "a short justification (2–3 sentences) for each domain." : "detailed analysis with specific examples."}
 
-✅ 📌 Organisation (O):
-<explanation>
+If original band scores were given by two markers, feel free to compare their scores with your evaluation:
+${originalScores ? JSON.stringify(originalScores, null, 2) : "N/A"}
 
-Student writing:
+Student Writing:
 ${writing}
 `;
 
-  try {
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+    const res = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,19 +44,18 @@ ${writing}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a DSE English Paper 2 writing marker." },
+          { role: "system", content: "You are a professional HKDSE English writing examiner." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 700
+        temperature: 0.4,
+        max_tokens: 900
       })
     });
 
-    const data = await response.json();
-    const bandAnalysis = data.choices?.[0]?.message?.content?.trim();
-    res.status(200).json({ bandAnalysis: bandAnalysis || "⚠️ No feedback generated." });
+    const data = await res.json();
+    const bandAnalysis = data.choices?.[0]?.message?.content?.trim() || "⚠️ No feedback returned.";
+    return new Response(JSON.stringify({ bandAnalysis }), { status: 200 });
   } catch (err) {
-    console.error("Band feedback error:", err);
-    res.status(500).json({ error: "Failed to generate band feedback." });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
