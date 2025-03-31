@@ -1,22 +1,33 @@
+
 export async function POST(req) {
   try {
     const { insights } = await req.json();
 
+    if (!insights || !Array.isArray(insights) || insights.length === 0) {
+      return new Response("No paragraph insights received.", { status: 400 });
+    }
+
     let compiledInsights = insights
       .map((p, idx) => {
-        if (typeof p === "string") return `Paragraph ${idx + 1} Feedback:\n${p}`;
+        if (!p) return null;
+
+        if (typeof p === "string") {
+          return `Paragraph ${idx + 1} Feedback:\n${p}`;
+        }
+
         if (p?.content || p?.language || p?.organisation) {
           return `Paragraph ${idx + 1} Feedback:\n` +
             `Content: ${p.content || "Not provided"}\n` +
             `Language: ${p.language || "Not provided"}\n` +
             `Organisation: ${p.organisation || "Not provided"}`;
         }
+
         return null;
       })
       .filter(p => !!p)
       .join("\n\n");
 
-    if (!compiledInsights || compiledInsights.trim().length < 10) {
+    if (!compiledInsights || compiledInsights.trim().length < 20) {
       return new Response("Not enough detailed paragraph evaluations for scoring.", { status: 400 });
     }
 
