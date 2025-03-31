@@ -1,37 +1,43 @@
-export const runtime = 'edge';
+// 📂 bands-paragraph.js
 
 export async function POST(req) {
   try {
-    const { paragraph = "", position = "body" } = await req.json();
+    const { paragraphs, question } = await req.json();
+    const results = [];
 
-    if (!paragraph.trim()) {
-      return new Response(JSON.stringify({ paragraphAnalysis: "⚠️ Empty paragraph." }), { status: 400 });
+    for (let i = 0; i < paragraphs.length; i++) {
+      const prompt = `You are an HKDSE English Paper 2 marker. Carefully evaluate paragraph ${i + 1} of a student's writing based on Content, Language, and Organisation.
+
+The writing task is:
+"${question}"
+
+Paragraph ${i + 1}:
+"${paragraphs[i]}"
+
+Provide detailed feedback for each domain. After each domain, include a hidden band score in the format [C:5], [L:4], [O:5] depending on how well the paragraph performs.`;
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      const data = await response.json();
+      results.push(data.choices[0].message.content.trim());
     }
 
-    const systemPrompt = "You are an HKDSE English teacher. Analyze the student's writing paragraph by paragraph. For each paragraph, return feedback on Content, Language, and Organisation. If it's just a greeting or closing, note that it is not applicable for full feedback.";
-
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": process.env.AZURE_OPENAI_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Paragraph (${position}):\n${paragraph.trim()}` }
-        ],
-        temperature: 0.3,
-        max_tokens: 1200
-      })
+    return new Response(JSON.stringify({ insights: results }), {
+      status: 200,
     });
-
-    const data = await response.json();
-    const analysis = data.choices?.[0]?.message?.content || "⚠️ No feedback generated.";
-
-    return new Response(JSON.stringify({ paragraphAnalysis: analysis }), { status: 200 });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "Paragraph analysis failed." }), {
+      status: 500,
+    });
   }
 }
