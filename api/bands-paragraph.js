@@ -1,11 +1,16 @@
-export default async function handler(req, res) {
-  const { paragraph, position = "body" } = req.body;
 
-  if (!paragraph) {
-    return res.status(400).json({ error: "Missing paragraph" });
-  }
+// /api/bands-paragraph.js
+export const runtime = 'edge';
 
-  const prompt = `
+export async function POST(req) {
+  try {
+    const { paragraph, position = "body" } = await req.json();
+
+    if (!paragraph) {
+      return new Response(JSON.stringify({ error: "Missing paragraph" }), { status: 400 });
+    }
+
+    const prompt = `
 You are an HKDSE English Paper 2 examiner.
 
 You will evaluate ONE paragraph of a student's writing. This is the ${position} paragraph of the essay.
@@ -27,28 +32,26 @@ Student paragraph:
 ${paragraph}
 `;
 
-  try {
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+    const res = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": process.env.AZURE_OPENAI_KEY
+        "api-key": process.env.OPENAI_API_KEY
       },
       body: JSON.stringify({
         messages: [
           { role: "system", content: "You are a helpful HKDSE English Paper 2 paragraph evaluator." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.4,
+        temperature: 0.3,
         max_tokens: 500
       })
     });
 
-    const data = await response.json();
-    const output = data.choices?.[0]?.message?.content?.trim();
-    res.status(200).json({ paragraphAnalysis: output || "⚠️ No response returned." });
+    const data = await res.json();
+    const paragraphAnalysis = data.choices?.[0]?.message?.content?.trim();
+    return new Response(JSON.stringify({ paragraphAnalysis }), { status: 200 });
   } catch (err) {
-    console.error("Paragraph band analysis error:", err);
-    res.status(500).json({ error: "Failed to evaluate paragraph." });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
