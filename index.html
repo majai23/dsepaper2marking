@@ -89,7 +89,8 @@
         const res1 = await fetch("/api/bands", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ writing, originalScores, paperType: "Part A" })
+          const mode = document.getElementById("feedbackMode").value;
+      body: JSON.stringify({ writing, originalScores, paperType: "Part A", mode })
         });
 
         const data1 = await res1.json();
