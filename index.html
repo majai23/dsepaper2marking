@@ -1,6 +1,5 @@
 
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -15,7 +14,7 @@
     button:hover { background-color: #1e40af; }
     pre { background: #f9fafb; border: 1px solid #d1d5db; min-height: 80px; white-space: pre-wrap; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; }
-  </style>
+</style>
 </head>
 <body>
 <h1>DSE Writing Feedback Tool</h1>
@@ -23,185 +22,155 @@
 <input id="question" placeholder="e.g. Should school uniforms be mandatory?"/>
 <label for="studentWriting">Your Writing</label>
 <textarea id="studentWriting" placeholder="Paste or write your full response here..." rows="10"></textarea>
+
 <label for="feedbackMode">Feedback Mode</label>
 <select id="feedbackMode">
-<option value="quick">Quick Feedback</option>
-<option value="detailed">Detailed Feedback (paragraph by paragraph)</option>
+  <option value="quick">Quick Feedback</option>
+  <option value="detailed">Detailed Feedback (paragraph by paragraph)</option>
 </select>
+
+<!-- Band Score Input Grid -->
 <div class="grid">
-<div><label>C1<input id="C1" max="7" min="1" type="number"/></label></div>
-<div><label>L1<input id="L1" max="7" min="1" type="number"/></label></div>
-<div><label>O1<input id="O1" max="7" min="1" type="number"/></label></div>
-<div><label>C2<input id="C2" max="7" min="1" type="number"/></label></div>
-<div><label>L2<input id="L2" max="7" min="1" type="number"/></label></div>
-<div><label>O2<input id="O2" max="7" min="1" type="number"/></label></div>
+  <div><label>C1<input id="C1" max="7" min="1" type="number"/></label></div>
+  <div><label>L1<input id="L1" max="7" min="1" type="number"/></label></div>
+  <div><label>O1<input id="O1" max="7" min="1" type="number"/></label></div>
+  <div><label>C2<input id="C2" max="7" min="1" type="number"/></label></div>
+  <div><label>L2<input id="L2" max="7" min="1" type="number"/></label></div>
+  <div><label>O2<input id="O2" max="7" min="1" type="number"/></label></div>
 </div>
-<button onclick="generateFeedback()">Analyze Paragraphs</button>
-<button onclick="summarizeBands()">Summarize Scores</button>
+
+<!-- Generate Band Score Button -->
+<button onclick="generateBandScores()">Generate Band Score</button>
+<pre id="bandScoreResult">Band scores (C L O) will appear here...</pre>
+
+<!-- Feedback Generation -->
+<button onclick="generateFeedback()">Generate Feedback</button>
 <pre id="feedback">Feedback will appear here...</pre>
 <pre id="judgement">Final judgement will appear here...</pre>
+
+<!-- Brush Up Section -->
 <div style="display: flex; gap: 20px; margin-top: 20px;">
-<div style="flex: 1;">
-<button onclick="brushUp('5')">Brush-up Writing to Level 5</button>
-<pre id="brushup5">Your Level 5 improved writing will appear here...</pre>
+  <div style="flex: 1;">
+    <button onclick="brushUp('5')">Brush-up Writing to Level 5</button>
+    <pre id="brushup5">Your Level 5 improved writing will appear here...</pre>
+  </div>
+  <div style="flex: 1;">
+    <button onclick="brushUp('5**')">Brush-up Writing to Level 5**</button>
+    <pre id="brushup5star">Your Level 5** improved writing will appear here...</pre>
+  </div>
 </div>
-<div style="flex: 1;">
-<button onclick="brushUp('5**')">Brush-up Writing to Level 5**</button>
-<pre id="brushup5star">Your Level 5** improved writing will appear here...</pre>
-</div>
-</div>
+
 <script>
-  let cachedInsights = [];
+let cachedInsights = [];
 
-  async function generateFeedback() {
-    const writing = document.getElementById("studentWriting").value;
-    const mode = document.getElementById("feedbackMode").value;
-    const feedbackEl = document.getElementById("feedback");
-    const judgementEl = document.getElementById("judgement");
+async function generateBandScores() {
+  const writing = document.getElementById("studentWriting").value;
+  const question = document.getElementById("question").value;
+  try {
+    const res = await fetch("/api/bands-summarize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ writing, question })
+    });
+    const data = await res.json();
+    const scores = data.scores;
+    if (scores?.C && scores?.L && scores?.O) {
+      document.getElementById("C1").value = scores.C;
+      document.getElementById("C2").value = scores.C;
+      document.getElementById("L1").value = scores.L;
+      document.getElementById("L2").value = scores.L;
+      document.getElementById("O1").value = scores.O;
+      document.getElementById("O2").value = scores.O;
+      document.getElementById("bandScoreResult").innerText =
+        `C: ${scores.C}  L: ${scores.L}  O: ${scores.O}`;
+    } else {
+      alert("⚠️ Could not generate scores from the response.");
+    }
+  } catch (err) {
+    alert("❌ Error generating band scores.");
+  }
+}
 
-    feedbackEl.innerText = "🔄 Generating feedback...";
-    judgementEl.innerText = "";
+async function generateFeedback() {
+  const writing = document.getElementById("studentWriting").value;
+  const mode = document.getElementById("feedbackMode").value;
+  const feedbackEl = document.getElementById("feedback");
+  const judgementEl = document.getElementById("judgement");
+  feedbackEl.innerText = "🔄 Generating feedback...";
+  judgementEl.innerText = "";
 
-    if (mode === "quick") {
+  if (mode === "quick") {
+    try {
+      const res = await fetch("/api/bands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ writing, question: document.getElementById("question").value, paperType: "Part A", mode: "quick" })
+      });
+      const data = await res.json();
+      feedbackEl.innerText = data.bandAnalysis || "⚠️ No feedback returned.";
+    } catch {
+      feedbackEl.innerText = "❌ Error during quick feedback.";
+    }
+  } else {
+    const paragraphs = writing.split(/
+{2,}/).filter(p => p.trim().length > 0);
+    cachedInsights = [];
+    feedbackEl.innerText = "";
+    for (let i = 0; i < paragraphs.length; i++) {
+      feedbackEl.innerText += `
+🔎 Analyzing paragraph ${i + 1}...
+`;
       try {
-        const res = await fetch("/api/bands", {
+        const res = await fetch("/api/bands-paragraph", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ writing, question: document.getElementById("question").value, paperType: "Part A", mode: "quick" })
+          body: JSON.stringify({
+            paragraph: paragraphs[i],
+            position: i === 0 ? "introduction" : i === paragraphs.length - 1 ? "conclusion" : "body"
+          })
         });
         const data = await res.json();
-        feedbackEl.innerText = data.bandAnalysis || "⚠️ No feedback returned.";
+        cachedInsights.push(data.paragraphAnalysis);
+        feedbackEl.innerText += data.paragraphAnalysis + "
+
+";
       } catch {
-        feedbackEl.innerText = "❌ Error during quick feedback.";
-      }
-    } else {
-      const paragraphs = writing.split(/\n{2,}/).filter(p => p.trim().length > 0);
-      cachedInsights = [];
-      feedbackEl.innerText = "";
-      for (let i = 0; i < paragraphs.length; i++) {
-        feedbackEl.innerText += `\n🔎 Analyzing paragraph ${i + 1}...\n`;
-        try {
-          const res = await fetch("/api/bands-paragraph", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              paragraph: paragraphs[i],
-              position: i === 0 ? "introduction" : i === paragraphs.length - 1 ? "conclusion" : "body"
-            })
-          });
-          const data = await res.json();
-          cachedInsights.push(data.paragraphAnalysis);
-          feedbackEl.innerText += data.paragraphAnalysis + "\n\n";
-        } catch {
-          feedbackEl.innerText += `❌ Error analyzing paragraph ${i + 1}\n`;
-        }
+        feedbackEl.innerText += `❌ Error analyzing paragraph ${i + 1}
+`;
       }
     }
   }
-
-  async function summarizeBands() {
-    const mode = document.getElementById("feedbackMode").value;
-    if (mode !== 'detailed') {
-      alert("⚠️ Summarize Scores is only available after Detailed Feedback analysis.");
-      return;
-    }
-    const feedbackEl = document.getElementById("feedback");
-    const judgementEl = document.getElementById("judgement");
-
-    if (!cachedInsights.length) {
-      feedbackEl.innerText = "⚠️ No paragraph analysis cached. Please run detailed analysis first.";
-      return;
-    }
-
-    try {
-      feedbackEl.innerText += "\n🧠 Summarizing band scores...\n";
-      const res = await fetch("/api/bands-summarize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ insights: cachedInsights, question: document.getElementById("question").value.trim(), mode: "detailed" })
-      });
-      const data = await res.json();
-      feedbackEl.innerText += data.bandAnalysis || "⚠️ No summary returned.";
-
-      const match = data.bandAnalysis.match(/Band Scores:\s*C:\s*(\d).*?L:\s*(\d).*?O:\s*(\d)/s);
-      const bands = match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : [];
-
-      if (bands.length === 3) {
-        judgementEl.innerText = "🔄 Final evaluation...";
-        const res2 = await fetch("/api/judgement", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ writing: document.getElementById("studentWriting").value, bands })
-        });
-        const data2 = await res2.json();
-        judgementEl.innerText = data2.judgement || "⚠️ No judgement returned.";
-      } else {
-        judgementEl.innerText = "⚠️ Could not extract band scores for final judgement.";
-      }
-    } catch (err) {
-      feedbackEl.innerText += "❌ Error summarizing feedback.";
-    }
-  }
-
-  async function brushUp(level = "5**") {
-    const writing = document.getElementById("studentWriting").value;
-    const outputBox = level === "5" ? document.getElementById("brushup5") : document.getElementById("brushup5star");
-    outputBox.innerText = "";
-
-    const paragraphs = writing.split(/\n{2,}/).filter(p => p.trim().length > 0);
-
-    for (let i = 0; i < paragraphs.length; i++) {
-      outputBox.innerText += `\n🔄 Rewriting paragraph ${i + 1} to Level ${level}...\n`;
-      try {
-        const response = await fetch("/api/rewrite", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paragraph: paragraphs[i], level })
-        });
-
-        const data = await response.json();
-        outputBox.innerText += data.rewritten || "⚠️ Rewrite failed.";
-        outputBox.innerText += "\n\n";
-      } catch {
-        outputBox.innerText += "❌ Server error.\n\n";
-      }
-    }
-  }
-</script>
-<script>
-async function analyse() {
-  const question = document.getElementById("questionInput").value.trim();
-  const writing = document.getElementById("writingInput").value.trim();
-  const feedbackSection = document.getElementById("feedbackSection");
-  feedbackSection.innerHTML = "🔍 Generating detailed feedback...\n";
-
-  const paragraphs = writing.split(/\n+/).map(p => p.trim()).filter(p => p.length > 0);
-
-  const insights = [];
-  for (let i = 0; i < paragraphs.length; i++) {
-    const paragraph = paragraphs[i];
-    feedbackSection.innerHTML += `\n\n🔎 Analyzing paragraph ${i + 1}...`;
-
-    try {
-      const res = await fetch("/api/bands-paragraph", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, paragraph })
-      });
-
-      const data = await res.json();
-      const analysis = data?.paragraphAnalysis ?? '⚠️ Paragraph analysis missing or not returned.';
-      insights.push(analysis);
-      feedbackSection.innerHTML += `\n${analysis}`;
-    } catch (err) {
-      insights.push(null);
-      feedbackSection.innerHTML += `\n❌ Error analyzing paragraph ${i + 1}`;
-    }
-  }
-
-  // Store for summary if needed
-  window.feedbackInsights = insights;
 }
-</script></body>
+
+async function brushUp(level = "5**") {
+  const writing = document.getElementById("studentWriting").value;
+  const outputBox = level === "5" ? document.getElementById("brushup5") : document.getElementById("brushup5star");
+  outputBox.innerText = "";
+  const paragraphs = writing.split(/
+{2,}/).filter(p => p.trim().length > 0);
+  for (let i = 0; i < paragraphs.length; i++) {
+    outputBox.innerText += `
+🔄 Rewriting paragraph ${i + 1} to Level ${level}...
+`;
+    try {
+      const response = await fetch("/api/rewrite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paragraph: paragraphs[i], level })
+      });
+      const data = await response.json();
+      outputBox.innerText += data.rewritten || "⚠️ Rewrite failed.";
+      outputBox.innerText += "
+
+";
+    } catch {
+      outputBox.innerText += "❌ Server error.
+
+";
+    }
+  }
+}
+</script>
+</body>
 </html>
 
