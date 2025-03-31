@@ -35,20 +35,27 @@ ${para}
             { role: "user", content: prompt }
           ],
           temperature: 0.6,
-          max_tokens: 500
+          max_tokens: 400
         })
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Azure GPT Error Response:", errorText);
+        rewrittenParagraphs.push(`❌ Azure GPT error: ${response.status}`);
+        continue;
+      }
 
       const data = await response.json();
       const rewritten = data.choices?.[0]?.message?.content;
       if (!rewritten) {
-        rewrittenParagraphs.push("⚠️ Failed to rewrite paragraph.");
+        rewrittenParagraphs.push("⚠️ GPT returned no content for this paragraph.");
       } else {
         rewrittenParagraphs.push(rewritten.trim());
       }
     } catch (err) {
       console.error("Error rewriting paragraph:", err);
-      rewrittenParagraphs.push("❌ Error processing this paragraph.");
+      rewrittenParagraphs.push("❌ Unexpected server error.");
     }
   }
 
