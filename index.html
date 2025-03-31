@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -41,7 +40,6 @@
 
 <!-- Generate Band Score Button -->
 <button onclick="generateBandScores()">Generate Band Score</button>
-<pre id="bandScoreResult">Band scores (C L O) will appear here...</pre>
 
 <!-- Feedback Generation -->
 <button onclick="generateFeedback()">Generate Feedback</button>
@@ -81,8 +79,6 @@ async function generateBandScores() {
       document.getElementById("L2").value = scores.L;
       document.getElementById("O1").value = scores.O;
       document.getElementById("O2").value = scores.O;
-      document.getElementById("bandScoreResult").innerText =
-        `C: ${scores.C}  L: ${scores.L}  O: ${scores.O}`;
     } else {
       alert("⚠️ Could not generate scores from the response.");
     }
