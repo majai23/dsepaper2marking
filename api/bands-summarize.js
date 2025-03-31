@@ -30,10 +30,31 @@ Finally, summarize the overall strengths and weaknesses of the writing and sugge
 Here is the detailed paragraph feedback:
 ` + compiledInsights;
 
-    return new Response(JSON.stringify({ prompt }), {
+    // 💬 Make a call to Azure OpenAI
+    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": process.env.AZURE_OPENAI_KEY
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: "You are an HKDSE English Writing examiner." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1200
+      })
+    });
+
+    const data = await response.json();
+    const finalAnalysis = data.choices?.[0]?.message?.content || "⚠️ No summary returned.";
+
+    return new Response(JSON.stringify({ finalAnalysis }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
+
   } catch (e) {
     console.error("❌ Error summarizing feedback:", e);
     return new Response("Error summarizing feedback.", { status: 500 });
