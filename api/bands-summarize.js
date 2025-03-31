@@ -1,62 +1,68 @@
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.AZURE_OPENAI_API_BASE,
+  defaultHeaders: {
+    "api-key": process.env.AZURE_OPENAI_API_KEY,
+  },
+  defaultQuery: {
+    "api-version": "2023-12-01-preview",
+  },
+});
+
 export async function POST(req) {
+  const { feedback } = await req.json();
+
+  if (!feedback || !Array.isArray(feedback) || feedback.length === 0) {
+    return new Response(
+      JSON.stringify({
+        error: "No detailed feedback provided.",
+        finalAnalysis: "⚠️ No detailed feedback provided. Please analyze the writing first.",
+      }),
+      { status: 400 }
+    );
+  }
+
+  const prompt = `
+You are a senior HKDSE English teacher. Based on the detailed paragraph-by-paragraph feedback below, assign band scores for Content (C), Language (L), and Organisation (O), following the HKDSE Paper 2 rubrics. Then, explain the strengths and weaknesses of the writing in terms of these three domains and give suggestions for improvement.
+
+Paragraph Feedback:
+${feedback.join("\n\n")}
+
+Return the result in this format:
+
+**Band Scores:**
+C: [1–7]
+L: [1–7]
+O: [1–7]
+
+**Justification:**
+(Explain why you gave these scores. Point out strengths and weaknesses for C, L, and O.)
+`;
+
   try {
-    const { insights } = await req.json();
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+    });
 
-    let compiledInsights = insights
-      .map((p, idx) => {
-        if (typeof p === "string") return `Paragraph ${idx + 1} Feedback:\n${p}`;
-        if (p?.content || p?.language || p?.organisation) {
-          return `Paragraph ${idx + 1} Feedback:\n` +
-            `Content: ${p.content || "Not provided"}\n` +
-            `Language: ${p.language || "Not provided"}\n` +
-            `Organisation: ${p.organisation || "Not provided"}`;
-        }
-        return null;
-      })
-      .filter(p => !!p)
-      .join("\n\n");
+    const output = response.choices?.[0]?.message?.content?.trim();
 
-    if (!compiledInsights || compiledInsights.trim().length < 10) {
-      return new Response("Not enough detailed paragraph evaluations for scoring.", { status: 400 });
+    if (!output) {
+      return new Response(JSON.stringify({
+        finalAnalysis: "⚠️ No summary returned.",
+        error: "❌ Error summarizing feedback.",
+      }));
     }
 
-    const prompt = `
-You are a strict but fair HKDSE English Writing examiner. Evaluate the following feedback and assign a band score (1-7) for each of the three domains: Content (C), Language (L), and Organisation (O).
-
-Then, provide a short justification (4–6 sentences) explaining why each domain received its respective score. Use direct evidence from the paragraph feedback.
-
-Finally, summarize the overall strengths and weaknesses of the writing and suggest 2-3 concrete steps for improvement.
-
-Here is the detailed paragraph feedback:
-` + compiledInsights;
-
-    // 💬 Make a call to Azure OpenAI
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": process.env.AZURE_OPENAI_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: "You are an HKDSE English Writing examiner." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 1200
-      })
-    });
-
-    const data = await response.json();
-    const finalAnalysis = data.choices?.[0]?.message?.content || "⚠️ No summary returned.";
-
-    return new Response(JSON.stringify({ finalAnalysis }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-
-  } catch (e) {
-    console.error("❌ Error summarizing feedback:", e);
-    return new Response("Error summarizing feedback.", { status: 500 });
+    return new Response(JSON.stringify({ finalAnalysis: output }));
+  } catch (err) {
+    return new Response(JSON.stringify({
+      finalAnalysis: "⚠️ No summary returned.",
+      error: "❌ Error summarizing feedback.",
+      debug: err.message,
+    }), { status: 500 });
   }
 }
