@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DSE Writing Feedback Tool (Streaming)</title>
+  <title>DSE Writing Feedback Tool (Fixed)</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
     label { font-weight: bold; margin-top: 20px; display: block; }
@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h1>DSE Writing Feedback Tool (Streaming)</h1>
+  <h1>DSE Writing Feedback Tool (Fixed)</h1>
 
   <label for="question">Writing Question</label>
   <input id="question" placeholder="e.g. Should school uniforms be mandatory?" />
@@ -114,33 +114,25 @@
   async function brushUp() {
     const writing = document.getElementById("studentWriting").value;
     const brushup = document.getElementById("brushup");
+    brushup.innerText = "";
 
-    brushup.innerText = "🔄 Rewriting paragraph by paragraph...";
+    const paragraphs = writing.split(/\n{2,}/).filter(p => p.trim().length > 0);
 
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ original: writing })
-      });
+    for (let i = 0; i < paragraphs.length; i++) {
+      brushup.innerText += `\n🔄 Rewriting paragraph ${i + 1}...\n`;
+      try {
+        const response = await fetch("/api/rewrite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paragraph: paragraphs[i] })
+        });
 
-      if (!response.ok) {
-        brushup.innerText = `❌ Server error (${response.status})`;
-        return;
+        const data = await response.json();
+        brushup.innerText += data.rewritten || "⚠️ Rewrite failed.";
+        brushup.innerText += "\n\n";
+      } catch {
+        brushup.innerText += "❌ Server error.\n\n";
       }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      brushup.innerText = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        brushup.innerText += chunk;
-      }
-    } catch (err) {
-      brushup.innerText = "❌ Failed to connect to server.";
     }
   }
 </script>
