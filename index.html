@@ -61,14 +61,42 @@
       const feedbackEl = document.getElementById("feedback");
       const judgementEl = document.getElementById("judgement");
 
-      const scores = {
-        C1: document.getElementById("C1").value,
-        C2: document.getElementById("C2").value,
-        L1: document.getElementById("L1").value,
-        L2: document.getElementById("L2").value,
-        O1: document.getElementById("O1").value,
-        O2: document.getElementById("O2").value
-      };
+      feedbackEl.innerText = "🔍 Analyzing paragraph-by-paragraph...";
+      judgementEl.innerText = "";
+
+      const paragraphs = writing.split(/
+{2,}/).filter(p => p.trim().length > 0);
+      const insights = [];
+
+      for (let i = 0; i < paragraphs.length; i++) {
+        try {
+          const res = await fetch("/api/bands-paragraph", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              paragraph: paragraphs[i],
+              position: i === 0 ? "introduction" : i === paragraphs.length - 1 ? "conclusion" : "body"
+            })
+          });
+          const data = await res.json();
+          insights.push(data.paragraphAnalysis || `⚠️ No analysis for paragraph ${i + 1}`);
+        } catch {
+          insights.push(`❌ Error analyzing paragraph ${i + 1}`);
+        }
+      }
+
+      try {
+        const res2 = await fetch("/api/bands-summarize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ insights })
+        });
+        const data2 = await res2.json();
+        feedbackEl.innerText = data2.bandAnalysis || "⚠️ No feedback summary returned.";
+      } catch {
+        feedbackEl.innerText = "❌ Failed to summarize band scores.";
+      }
+    };
 
       let originalScores = null;
       if (scores.C1 && scores.C2 && scores.L1 && scores.L2 && scores.O1 && scores.O2) {
