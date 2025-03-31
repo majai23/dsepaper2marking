@@ -15,7 +15,7 @@ ${original}
 `;
 
   try {
-    const response = await fetch("https://dsewriterai.openai.azure.com/openai/deployments/gpt4-dse/chat/completions?api-version=2024-02-15-preview", {
+    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -36,7 +36,7 @@ ${original}
     if (!writing) return res.status(500).json({ error: "No output generated" });
     res.status(200).json({ writing });
   } catch (err) {
-    console.error("Brush-up GPT-4 Error:", err);
+    console.error("Brush-up GPT-4o Error:", err);
     res.status(500).json({ error: "Server error while rewriting" });
   }
 }
