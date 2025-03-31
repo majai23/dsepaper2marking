@@ -41,9 +41,15 @@ export async function POST(req) {
     });
 
     const data = await response.json();
-    const insights = data.choices?.[0]?.message?.content?.split(/\n(?=🔎|✅|❌|\*\*|Paragraph)/) || [];
+    const output = data.choices?.[0]?.message?.content?.trim();
+
+    if (!output) {
+      return new Response(JSON.stringify({ insights: Array(paragraphs.length).fill("⚠️ Error: No feedback returned.") }), { status: 200 });
+    }
+
+    const insights = output.split(/\n(?=🔎|✅|❌|\*\*|Paragraph)/).filter(p => p.trim());
     return new Response(JSON.stringify({ insights }), { status: 200 });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ insights: Array(paragraphs.length).fill("⚠️ Error: " + err.message) }), { status: 500 });
   }
 }
