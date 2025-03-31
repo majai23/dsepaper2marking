@@ -1,7 +1,9 @@
 export default async function handler(req, res) {
   const { writing, level, mode } = req.body;
 
-  if (!writing || !level) return res.status(400).json({ error: "Missing writing or level" });
+  if (!writing || !level) {
+    return res.status(400).json({ error: "Missing writing or level" });
+  }
 
   const max_tokens = mode === "detailed" ? 1400 : 1000;
 
@@ -28,7 +30,7 @@ Student Writing:
 ${writing}`;
 
   try {
-    const response = await fetch("https://dsewriterai.openai.azure.com/openai/deployments/gpt4-dse/chat/completions?api-version=2024-02-15-preview", {
+    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,7 +51,7 @@ ${writing}`;
     if (!feedback) return res.status(500).json({ error: "No feedback returned" });
     res.status(200).json({ feedback });
   } catch (err) {
-    console.error("GPT-4 Feedback Error:", err);
+    console.error("GPT-4o Feedback Error:", err);
     res.status(500).json({ error: "Server error while generating feedback" });
   }
 }
