@@ -1,37 +1,43 @@
 
-// Improved bands-summarize.js
-// Handles both quick and detailed modes with better fallbacks and insight formatting
+// Improved /api/bands-summarize.js with logging and error handling
 
 export const runtime = 'edge';
 
 export async function POST(req) {
   try {
     const { insights, mode = "detailed" } = await req.json();
+    console.log("✅ Received insights for summarization:", insights?.length || "none");
     if (!insights || !Array.isArray(insights) || insights.length === 0) {
       return new Response(JSON.stringify({ bandAnalysis: "⚠️ No insights available for summarization." }), { status: 200 });
     }
 
-    const formattedInsights = insights.map((p, i) => `Paragraph ${i + 1}:
-${p}`).join("
-
-");
+    const formattedInsights = insights
+      .map((p, i) => `🔹 Paragraph ${i + 1}:
+${p}`)
+      .join("\n\n");
 
     const summaryPrompt = `
 You are an expert HKDSE English Paper 2 marker.
-You will be given paragraph-level evaluations and must assign overall band scores for:
+You will be given paragraph-level feedback and must assign band scores for:
+
 - Content (C)
 - Language (L)
 - Organisation (O)
 
-Use the official rubric (bands 1–7).
-Explain the reasoning ${mode === "quick" ? "briefly (2–3 lines per domain)" : "with detailed examples"}.
+Use the official rubric (Band 1–7). Respond in this format:
 
-Format:
-**Band Scores:**\nC: _  \nL: _  \nO: _
+**Band Scores:**
+C: _  
+L: _  
+O: _
 
-Then detailed analysis.
+Then explain your judgement ${
+      mode === "quick"
+        ? "briefly (2–3 sentences per domain)."
+        : "with examples from the student's writing."
+    }
 
-Student's paragraph evaluations:
+Paragraph-level feedback:
 ${formattedInsights}
 `;
 
@@ -43,18 +49,21 @@ ${formattedInsights}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a senior HKDSE English examiner." },
+          { role: "system", content: "You are a senior HKDSE examiner." },
           { role: "user", content: summaryPrompt }
         ],
-        max_tokens: 1000,
         temperature: 0.5,
+        max_tokens: 1000
       })
     });
 
     const data = await response.json();
+    console.log("🧠 GPT summary response:", data);
+
     const result = data.choices?.[0]?.message?.content?.trim();
     return new Response(JSON.stringify({ bandAnalysis: result || "⚠️ No summary returned." }), { status: 200 });
   } catch (err) {
+    console.error("❌ Error in /api/bands-summarize:", err.message);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
