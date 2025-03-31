@@ -1,78 +1,79 @@
 
-export const runtime = 'edge';
+// bands-summarize.js
+
+import { OpenAIStream, StreamingTextResponse } from "ai";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export const runtime = "edge";
 
 export async function POST(req) {
-  try {
-    const { insights = [] } = await req.json();
+  const { question, insights } = await req.json();
 
-    if (!Array.isArray(insights) || insights.length === 0) {
-      return new Response(JSON.stringify({ bandAnalysis: "⚠️ No paragraph insights received." }), { status: 400 });
-    }
-
-    const filteredInsights = insights.filter(text =>
-      typeof text === "string" &&
-      text.includes("✅ Content:") &&
-      text.includes("✅ Language:") &&
-      text.includes("✅ Organisation:") &&
-      !text.toLowerCase().includes("not applicable")
-    );
-
-    if (filteredInsights.length < 2) {
-      return new Response(JSON.stringify({ bandAnalysis: "⚠️ Not enough detailed paragraph evaluations for scoring." }), { status: 400 });
-    }
-
-    const summaryPrompt = `
-You are a senior HKDSE English examiner.
-
-Based on these paragraph evaluations, assign band scores from 1–7 for:
-- Content (C)
-- Language (L)
-- Organisation (O)
-
-Rubric guidance:
-- Band 7 = Excellent, well-developed, fluent and relevant with near-perfect accuracy
-- Band 6 = Strong performance with occasional issues, task fulfilled
-- Band 5 = Competent, some lapses but clear meaning and structure
-- DO NOT penalise salutation or closing phrases.
-
-Here are the paragraph evaluations:
-${filteredInsights.join("\n\n")}
-
-Now provide:
-
-Band Scores:
-C: ?
-L: ?
-O: ?
-
-Justification:
-Explain why each band score was awarded, referring to examples and performance levels only.`.trim();
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: "You are a strict and precise HKDSE examiner." },
-          { role: "user", content: summaryPrompt }
-        ],
-        temperature: 0.3,
-      }),
-    });
-
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content?.trim() || "⚠️ No summary returned.";
-
-    return new Response(JSON.stringify({ bandAnalysis: reply }), {
-      headers: { "Content-Type": "application/json" },
-    });
-
-  } catch (error) {
-    console.error("Summarizer Error:", error);
-    return new Response(JSON.stringify({ bandAnalysis: "⚠️ Server error while summarizing bands." }), { status: 500 });
+  if (!insights || !Array.isArray(insights) || insights.length === 0) {
+    return new Response("⚠️ Not enough detailed paragraph evaluations for scoring.", { status: 400 });
   }
+
+  let compiledInsights = insights
+    .filter(p => typeof p === "string" && p.trim() !== "")
+    .map((p, idx) => `Paragraph ${idx + 1} Feedback:
+${p}`)
+    .join("
+
+");
+
+  const prompt = `
+You are an HKDSE English Paper 2 expert marker.
+
+A student has written a response to the following question:
+"${question}"
+
+Below is the paragraph-by-paragraph analysis of the student's writing:
+${compiledInsights}
+
+Based on the analysis above, assign band scores for the following three domains according to HKDSE standards:
+
+Content (C)  
+Language (L)  
+Organisation (O)
+
+Then provide a brief justification for each score, referring to the paragraph insights above when possible. Finally, conclude with an overall comment and 2–3 practical suggestions for improvement.
+
+Format your response like this:
+
+🧠 Summarizing band scores...
+**Band Scores:**  
+C:  
+L:  
+O:  
+
+**Justification:**  
+...
+
+**Suggestions for Improvement:**  
+1.  
+2.  
+3.
+`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4",
+    stream: true,
+    messages: [
+      {
+        role: "system",
+        content: "You are a strict but fair HKDSE English writing examiner.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+  });
+
+  const stream = OpenAIStream(response);
+  return new StreamingTextResponse(stream);
 }
