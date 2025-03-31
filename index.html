@@ -12,10 +12,11 @@
     button { background-color: #2563eb; color: white; border: none; cursor: pointer; }
     button:hover { background-color: #1e40af; }
     pre { background: #f9fafb; border: 1px solid #d1d5db; min-height: 80px; white-space: pre-wrap; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; }
   </style>
 </head>
 <body>
-  <h1>DSE Writing Feedback Tool (GPT-4)</h1>
+  <h1>DSE Writing Feedback Tool (GPT-4o)</h1>
 
   <label for="question">Writing Question</label>
   <input id="question" placeholder="e.g. Should school uniforms be mandatory?" />
@@ -26,8 +27,17 @@
   <label for="feedbackMode">Feedback Mode</label>
   <select id="feedbackMode">
     <option value="quick">Quick Feedback (C / L / O)</option>
-    <option value="detailed">Detailed Feedback (Band Scores + Suggestions)</option>
+    <option value="detailed">Detailed Feedback (Band Scores + Justification)</option>
   </select>
+
+  <div class="grid">
+    <div><label>C1<input id="C1" type="number" min="1" max="7" /></label></div>
+    <div><label>C2<input id="C2" type="number" min="1" max="7" /></label></div>
+    <div><label>L1<input id="L1" type="number" min="1" max="7" /></label></div>
+    <div><label>L2<input id="L2" type="number" min="1" max="7" /></label></div>
+    <div><label>O1<input id="O1" type="number" min="1" max="7" /></label></div>
+    <div><label>O2<input id="O2" type="number" min="1" max="7" /></label></div>
+  </div>
 
   <button onclick="markWriting()">Generate Feedback</button>
   <pre id="feedback">Feedback will appear here...</pre>
@@ -41,12 +51,33 @@
     const mode = document.getElementById("feedbackMode").value;
     const feedback = document.getElementById("feedback");
 
-    feedback.innerText = "🔄 Generating feedback...";
+    const scores = {
+      C1: document.getElementById("C1").value,
+      C2: document.getElementById("C2").value,
+      L1: document.getElementById("L1").value,
+      L2: document.getElementById("L2").value,
+      O1: document.getElementById("O1").value,
+      O2: document.getElementById("O2").value
+    };
+
+    let originalScores = null;
+    if (scores.C1 && scores.C2 && scores.L1 && scores.L2 && scores.O1 && scores.O2) {
+      originalScores = {
+        C1: Number(scores.C1),
+        C2: Number(scores.C2),
+        L1: Number(scores.L1),
+        L2: Number(scores.L2),
+        O1: Number(scores.O1),
+        O2: Number(scores.O2)
+      };
+    }
+
+    feedback.innerText = "🔄 Generating detailed feedback...";
 
     const res = await fetch("/api/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ writing, level: "5**", mode })
+      body: JSON.stringify({ writing, level: "5**", mode, originalScores, paperType: "Part A" })
     });
 
     try {
