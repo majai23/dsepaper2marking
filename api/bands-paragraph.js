@@ -3,62 +3,46 @@ export const runtime = 'edge';
 
 export async function POST(req) {
   try {
-    const { paragraph, position = "body" } = await req.json();
+    const { paragraphs = [] } = await req.json();
 
-    const clean = (s) => s.trim().toLowerCase();
-    const isSalutation = position === "salutation" || /^dear\b|^to whom|^sir|madam/i.test(clean(paragraph));
-    const isClosing = position === "closing" || /yours|sincerely|faithfully|regards/i.test(clean(paragraph));
-
-    if (!paragraph || clean(paragraph).length < 5) {
-      return new Response(JSON.stringify({ paragraphAnalysis: "⚠️ Paragraph too short or empty to evaluate." }), { status: 200 });
+    if (!Array.isArray(paragraphs) || paragraphs.length === 0) {
+      return new Response(JSON.stringify({ insights: [] }), { status: 400 });
     }
 
-    if (isSalutation || isClosing) {
-      const type = isSalutation ? "Salutation" : "Complimentary Close";
-      const analysis = `✅ Content: Not applicable for ${type.toLowerCase()}s.\n✅ Language: Appropriate tone and formality for a formal letter.\n✅ Organisation: Properly positioned in the structure of a formal letter.`;
-      return new Response(JSON.stringify({ paragraphAnalysis: analysis }), { status: 200 });
-    }
+    const systemPrompt = "You are an HKDSE English teacher. For each paragraph, return its Content, Language, and Organisation feedback. If it's a greeting or closing (like 'Dear sir / madam', 'Thank you', 'Yours sincerely'), note that in feedback and say it's not applicable to scoring.";
 
-    const prompt = `
-You are a professional HKDSE English Paper 2 examiner.
+    const formattedMessages = paragraphs.map((text, index) => {
+      const lower = text.trim().toLowerCase();
+      const isGreeting = lower.includes("dear") && lower.includes("sir");
+      const isClosing = lower.includes("yours") || lower.includes("sincerely") || lower.includes("faithfully") || lower.includes("thank you") || lower.length < 10;
+      const hint = isGreeting
+        ? "(This is a greeting or salutation.)"
+        : isClosing
+        ? "(This is a closing or standalone polite phrase.)"
+        : "";
 
-You are given one paragraph from a student's writing (${position.toUpperCase()}).
+      return {
+        role: "user",
+        content: `Paragraph ${index + 1}: ${hint}\n${text}`
+      };
+    });
 
-Evaluate how this paragraph contributes to:
-1. Content (C)
-2. Language (L)
-3. Organisation (O)
-
-⚠️ You MUST quote 1–2 phrases from the student's paragraph to support each category.
-
-Respond in this format:
-✅ Content: ...
-✅ Language: ...
-✅ Organisation: ...
-
-Student paragraph:
-${paragraph}
-`;
-
-    const res = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "api-key": process.env.AZURE_OPENAI_KEY
       },
       body: JSON.stringify({
-        messages: [
-          { role: "system", content: "You are a senior HKDSE English paragraph evaluator." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.4,
-        max_tokens: 600
+        messages: [{ role: "system", content: systemPrompt }, ...formattedMessages],
+        temperature: 0.3,
+        max_tokens: 2200
       })
     });
 
-    const data = await res.json();
-    const paragraphAnalysis = data.choices?.[0]?.message?.content?.trim() || "⚠️ No analysis returned.";
-    return new Response(JSON.stringify({ paragraphAnalysis }), { status: 200 });
+    const data = await response.json();
+    const insights = data.choices?.[0]?.message?.content?.split(/\n(?=🔎|✅|❌|\*\*|Paragraph)/) || [];
+    return new Response(JSON.stringify({ insights }), { status: 200 });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
