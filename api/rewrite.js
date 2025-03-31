@@ -8,13 +8,17 @@ export default async function handler(req, res) {
   const prompt = `
 You are an HKDSE English Paper 2 rewriting coach.
 
-Polish the following paragraph to a strong Level ${level}.
+Rewrite ONLY the following paragraph to a strong Level ${level} standard.
 
-Improve clarity, word choice, sentence structure, and flow.
+Improve clarity, tone, word choice, sentence structure, and logical flow.
+
+Focus ONLY on this paragraph. Do not merge, summarize, or anticipate other paragraphs.
+
+If the paragraph is a salutation or complimentary close (e.g., “Dear Sir”, “Yours faithfully”), adjust it to match the appropriate tone and formality of the writing.
+
+Even if the paragraph is very short or a standalone line, rewrite it meaningfully.
 
 Highlight all improvements using **bold** formatting.
-
-If the paragraph is a salutation or complimentary close (e.g. “Dear Sir”, “Yours faithfully”), adjust the tone to match the overall formality of the writing.
 
 Original paragraph:
 ${paragraph}
@@ -32,7 +36,7 @@ ${paragraph}
           { role: "system", content: "You are a helpful HKDSE English rewriting assistant." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.6,
+        temperature: 0.5,
         max_tokens: 400
       })
     });
