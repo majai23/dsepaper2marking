@@ -140,6 +140,32 @@
       }
     }
   }
+
+async function analyse() {
+  const input = document.getElementById("writingInput").value.trim();
+  const question = document.getElementById("questionInput").value.trim();
+  const feedbackSection = document.getElementById("feedbackOutput");
+  feedbackSection.innerHTML = "⏳ Generating detailed feedback...";
+
+  try {
+    const response = await fetch("/api/bands-paragraph", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paragraphs: input.split("\n").filter(p => p.trim()) })
+    });
+
+    const data = await response.json();
+    const feedbackInsights = data.insights || [];
+
+    feedbackSection.innerHTML = "";
+    feedbackInsights.forEach((insight, i) => {
+      feedbackSection.innerHTML += `\n\n🔎 Analyzing paragraph ${i + 1}...\n${insight ? insight : '⚠️ Feedback not returned or misaligned with paragraph.'}`;
+    });
+  } catch (error) {
+    feedbackSection.innerHTML = "❌ Failed to generate feedback.";
+  }
+}
+
 </script>
 </body>
 </html>
