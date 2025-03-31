@@ -2,9 +2,6 @@
 export const runtime = 'edge';
 
 export async function POST(req) {
-export const runtime = 'edge';
-
-export async function POST(req) {
   try {
     const { paragraphs = [] } = await req.json();
 
@@ -37,7 +34,9 @@ ${p.trim()}`)
 
     const data = await response.json();
     const rawOutput = data.choices?.[0]?.message?.content || "⚠️ No response content.";
-    const insights = rawOutput.split(/\n(?=🔎|✅|❌|Paragraph)/).filter(p => p.trim());
+    const insights = rawOutput
+      .split(/(?=🔎 Analyzing Paragraph \d+)/)
+      .filter(p => p.trim());
 
     return new Response(JSON.stringify({ rawOutput, insights }), { status: 200 });
   } catch (err) {
