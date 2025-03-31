@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>DSE Writing Feedback Tool (GPT-4)</title>
+  <title>DSE Writing Feedback Tool (GPT-4o)</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
     label { font-weight: bold; margin-top: 20px; display: block; }
@@ -27,7 +27,7 @@
   <label for="feedbackMode">Feedback Mode</label>
   <select id="feedbackMode">
     <option value="quick">Quick Feedback (C / L / O)</option>
-    <option value="detailed">Detailed Feedback (Band Scores + Justification)</option>
+    <option value="detailed">Detailed Feedback (Band Scores + Judgement)</option>
   </select>
 
   <div class="grid">
@@ -39,17 +39,19 @@
     <div><label>O2<input id="O2" type="number" min="1" max="7" /></label></div>
   </div>
 
-  <button onclick="markWriting()">Generate Feedback</button>
+  <button onclick="generateFeedback()">Generate Feedback</button>
   <pre id="feedback">Feedback will appear here...</pre>
+
+  <pre id="judgement">Final judgement will appear here...</pre>
 
   <button onclick="brushUp()">Brush-up Writing to 5**</button>
   <pre id="brushup">Your improved writing will appear here...</pre>
 
 <script>
-  async function markWriting() {
+  async function generateFeedback() {
     const writing = document.getElementById("studentWriting").value;
-    const mode = document.getElementById("feedbackMode").value;
-    const feedback = document.getElementById("feedback");
+    const feedbackEl = document.getElementById("feedback");
+    const judgementEl = document.getElementById("judgement");
 
     const scores = {
       C1: document.getElementById("C1").value,
@@ -72,21 +74,41 @@
       };
     }
 
-    feedback.innerText = "🔄 Generating detailed feedback...";
+    feedbackEl.innerText = "🔄 Generating band scores...";
+    judgementEl.innerText = "";
 
     try {
-      const response = await fetch("/api/feedback", {
+      const res1 = await fetch("/api/bands", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ writing, level: "5**", mode, originalScores, paperType: "Part A" })
+        body: JSON.stringify({ writing, originalScores, paperType: "Part A" })
       });
 
-      const clone = response.clone();
-      const data = await response.json();
-      feedback.innerText = data.feedback || "⚠️ No feedback returned.";
+      const data1 = await res1.json();
+      const bandText = data1.bandAnalysis || "⚠️ No feedback returned.";
+      feedbackEl.innerText = bandText;
+
+      // Extract numeric band scores
+      const matchBands = bandText.match(/Band score: \*\*?(\d)/g);
+      const bands = matchBands ? matchBands.map(m => parseInt(m.match(/\d/)[0])) : [];
+
+      if (bands.length === 3) {
+        judgementEl.innerText = "🔄 Calculating final level and suggestions...";
+        const res2 = await fetch("/api/judgement", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ writing, bands })
+        });
+
+        const data2 = await res2.json();
+        judgementEl.innerText = data2.judgement || "⚠️ No judgement returned.";
+      } else {
+        judgementEl.innerText = "⚠️ Could not extract all three band scores for final judgement.";
+      }
+
     } catch (err) {
-      const text = await err.response?.clone()?.text?.();
-      feedback.innerText = "❌ Server error.";
+      feedbackEl.innerText = "❌ Server error during feedback.";
+      judgementEl.innerText = "";
     }
   }
 
