@@ -1,37 +1,42 @@
 export default async function handler(req, res) {
-  const { writing, originalScores = null, paperType = "Part A" } = req.body;
+  const { writing, originalScores, paperType = "Part A", mode = "detailed" } = req.body;
 
-  if (!writing) {
-    return res.status(400).json({ error: "Missing writing" });
-  }
+  const baseInstruction =
+    mode === "quick"
+      ? `Give band scores for Content (C), Language (L), and Organisation (O), each from 1 to 7.
+Briefly explain in 2–3 sentences why the candidate earned that band in each domain. Be concise, focus on overall performance.
 
-  const max_tokens = 1000;
-
-  const scoreTable = originalScores
-    ? `Original Marker Scores:
-
-| Category      | 1st Marker | 2nd Marker |
-|---------------|------------|------------|
-| Content (C)   | ${originalScores.C1} | ${originalScores.C2} |
-| Language (L)  | ${originalScores.L1} | ${originalScores.L2} |
-| Organisation (O) | ${originalScores.O1} | ${originalScores.O2} |`
-    : "";
+DO NOT quote specific examples or lines from the writing. This is a summary-level response.`
+      : `Give band scores for Content (C), Language (L), and Organisation (O), each from 1 to 7.
+Use concrete examples or specific phrases from the writing to support your assessment in each domain.
+This is a full detailed feedback.`;
 
   const prompt = `
-You are an HKDSE English Paper 2 examiner.
+You are a Hong Kong DSE English Paper 2 marker.
 
-Evaluate the following writing using the official HKDSE ${paperType} Rubrics.
+Mark the following student writing using the official HKDSE Paper 2 rubrics.
 
-${scoreTable}
+Paper Type: ${paperType}
+${baseInstruction}
 
-For each domain (Content, Language, Organisation), give:
-- Strengths
-- Weaknesses
-- Band score (1–7) and justification
+Return your feedback in this format:
 
-Do NOT include the final level or suggestions yet.
+📊 Band Scores:
+C: <score>
+L: <score>
+O: <score>
 
-Student Writing:
+Feedback:
+✅ 📌 Content (C):
+<explanation>
+
+✅ 📌 Language (L):
+<explanation>
+
+✅ 📌 Organisation (O):
+<explanation>
+
+Student writing:
 ${writing}
 `;
 
@@ -44,20 +49,19 @@ ${writing}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a precise and concise HKDSE English Paper 2 examiner." },
+          { role: "system", content: "You are a DSE English Paper 2 writing marker." },
           { role: "user", content: prompt }
         ],
         temperature: 0.3,
-        max_tokens
+        max_tokens: 700
       })
     });
 
     const data = await response.json();
-    const bandAnalysis = data.choices?.[0]?.message?.content;
-    if (!bandAnalysis) return res.status(500).json({ error: "No band analysis returned" });
-    res.status(200).json({ bandAnalysis });
+    const bandAnalysis = data.choices?.[0]?.message?.content?.trim();
+    res.status(200).json({ bandAnalysis: bandAnalysis || "⚠️ No feedback generated." });
   } catch (err) {
-    console.error("Band Analysis Error:", err);
-    res.status(500).json({ error: "Server error while generating band analysis" });
+    console.error("Band feedback error:", err);
+    res.status(500).json({ error: "Failed to generate band feedback." });
   }
 }
