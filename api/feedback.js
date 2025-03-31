@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing writing or level" });
   }
 
-  const max_tokens = 1000;
+  const max_tokens = 1200;
 
   const scoreTable = originalScores
     ? `Original Marker Scores:
@@ -24,7 +24,7 @@ Evaluate the student's writing using the official HKDSE ${paperType} Rubrics.
 
 ${scoreTable}
 
-Respond in this format:
+Use this structured format:
 
 📊 Marker Scores (if provided)
 
@@ -41,16 +41,19 @@ Respond in this format:
 
 🏁 Final Judgement:
 - Based ONLY on your three band scores above, calculate the average.
-- Use this scale to assign the level:
-  - 7 → Level 5**
-  - 6 → Level 5*
-  - 5 → Level 5
-  - 4 → Level 4
-  - 3 → Level 3
-  - 2 → Level 2
-  - 1 → Level 1
-- Give a short explanation for your level judgement.
-- Then provide 2–3 specific suggestions to improve to Level 5 or 5**.
+- Assign level using this scale:
+  7 → Level 5**
+  6 → Level 5*
+  5 → Level 5
+  4 → Level 4
+  3 → Level 3
+  2 → Level 2
+  1 → Level 1
+
+- Brief explanation for the level
+- Then 2–3 actionable suggestions to improve to Level 5 or 5**
+
+📝 Keep your entire response concise and under 500 words.
 
 Student Writing:
 ${writing}
@@ -65,7 +68,7 @@ ${writing}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a clear, logical, and supportive HKDSE English writing examiner." },
+          { role: "system", content: "You are a clear, logical, and concise HKDSE English writing examiner." },
           { role: "user", content: prompt }
         ],
         temperature: 0.3,
