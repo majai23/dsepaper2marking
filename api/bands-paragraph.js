@@ -1,5 +1,4 @@
 
-// /api/bands-paragraph.js
 export const runtime = 'edge';
 
 export async function POST(req) {
@@ -10,19 +9,31 @@ export async function POST(req) {
       return new Response(JSON.stringify({ paragraphAnalysis: "⚠️ Paragraph too short or empty to evaluate." }), { status: 200 });
     }
 
+    let customInstruction = "";
+    if (position === "salutation") {
+      customInstruction = "This paragraph is a salutation. Evaluate only its tone and formality. Do not comment on content development or organisation.";
+    } else if (position === "closing") {
+      customInstruction = "This paragraph is a complimentary close. Evaluate only its appropriateness in tone and formality. Do not rate it on structure or development.";
+    } else {
+      customInstruction = "You must quote 1–2 phrases directly from the paragraph to justify your evaluation of Content, Language, and Organisation.";
+    }
+
     const prompt = `
-You are an HKDSE English Paper 2 examiner.
+You are a professional HKDSE English Paper 2 examiner. You are given one paragraph from a student's writing.
 
-Evaluate ONE paragraph of a student's writing. This paragraph functions as the ${position}.
+Position of this paragraph: ${position.toUpperCase()}
 
-Assess how this paragraph contributes to the overall performance in:
+${customInstruction}
+
+Evaluate how this paragraph contributes to:
 1. Content (C)
 2. Language (L)
 3. Organisation (O)
 
-✅ Use 1–2 direct quotes or phrases from the paragraph to justify your feedback.
+⚠️ Use the student's actual words (1–2 phrases per category) to support your comments.
 
-Do NOT give band scores. Instead, give brief evaluations using this format:
+Respond in the following format:
+
 ✅ Content: ...
 ✅ Language: ...
 ✅ Organisation: ...
@@ -39,11 +50,11 @@ ${paragraph}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a helpful HKDSE English Paper 2 paragraph evaluator." },
+          { role: "system", content: "You are a senior HKDSE English paragraph evaluator." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 500
+        temperature: 0.4,
+        max_tokens: 600
       })
     });
 
