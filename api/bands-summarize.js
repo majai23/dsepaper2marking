@@ -1,3 +1,4 @@
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -14,9 +15,11 @@ export async function POST(req) {
   }
 
   let compiledInsights = insights
-    .filter(p => typeof p === "string" && p.trim() !== "")
-    .map((p, idx) => `Paragraph ${idx + 1} Feedback:
-${p}`)
+    .map((p, idx) => {
+      const text = typeof p === "string" ? p : p?.paragraphAnalysis;
+      return text ? `Paragraph ${idx + 1} Feedback:\n${text}` : null;
+    })
+    .filter(p => !!p)
     .join("\n\n");
 
   const prompt = `
