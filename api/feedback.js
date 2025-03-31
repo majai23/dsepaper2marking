@@ -18,18 +18,39 @@ export default async function handler(req, res) {
     : "";
 
   const prompt = `
-You are an HKDSE English examiner.
+You are an HKDSE English Paper 2 examiner.
 
-Evaluate the writing below using HKDSE ${paperType} Rubrics. ${originalScores ? "Compare with the given marker scores." : ""}
+Evaluate the student's writing using the official HKDSE ${paperType} Rubrics.
 
 ${scoreTable}
 
 Respond in this format:
-📊 Marker Scores
-✅ 📌 Content (C): [Strengths, Weaknesses, Verdict]
-✅ 📌 Language (L): ...
-✅ 📌 Organisation (O): ...
-🏁 Final Judgement: [Suggested bands, final level, tips to reach 5**]
+
+📊 Marker Scores (if provided)
+
+✅ 📌 Domain 1: Content (C)
+- Strengths
+- Weaknesses
+- Band score (1–7) and justification
+
+✅ 📌 Domain 2: Language (L)
+...
+
+✅ 📌 Domain 3: Organisation (O)
+...
+
+🏁 Final Judgement:
+- Based ONLY on your three band scores above, calculate the average.
+- Use this scale to assign the level:
+  - 7 → Level 5**
+  - 6 → Level 5*
+  - 5 → Level 5
+  - 4 → Level 4
+  - 3 → Level 3
+  - 2 → Level 2
+  - 1 → Level 1
+- Give a short explanation for your level judgement.
+- Then provide 2–3 specific suggestions to improve to Level 5 or 5**.
 
 Student Writing:
 ${writing}
@@ -44,7 +65,7 @@ ${writing}
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a concise, accurate HKDSE English examiner." },
+          { role: "system", content: "You are a clear, logical, and supportive HKDSE English writing examiner." },
           { role: "user", content: prompt }
         ],
         temperature: 0.3,
@@ -58,6 +79,6 @@ ${writing}
     res.status(200).json({ feedback });
   } catch (err) {
     console.error("GPT-4o Feedback Error:", err);
-    res.status(504).json({ error: "Timeout or server error while generating feedback" });
+    res.status(500).json({ error: "Server error while generating feedback" });
   }
 }
