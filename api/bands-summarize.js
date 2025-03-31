@@ -1,58 +1,54 @@
-export default async function handler(req, res) {
-  const { insights = [] } = req.body;
 
-  const prompt = `
-You are a HKDSE English Paper 2 examiner.
+// Updated bands-summarize.js
+// Supports both quick and detailed mode using paragraph-based scores
 
-You will be given several short analyses of individual paragraphs from a student's essay.
-Each analysis discusses how that paragraph contributes to Content (C), Language (L), and Organisation (O).
+export const runtime = 'edge';
 
-Your task is to:
-1. Summarize overall strengths and weaknesses across the full essay.
-2. Assign a final band score (1–7) for Content, Language, and Organisation.
-
-Format your reply like this:
-
-📊 Band Scores:
-C: <score>
-L: <score>
-O: <score>
-
-✅ 📌 Content (C):
-<explanation>
-
-✅ 📌 Language (L):
-<explanation>
-
-✅ 📌 Organisation (O):
-<explanation>
-
-Here are the paragraph-level insights:
-${insights.join('\n\n')}
-`;
-
+export async function POST(req) {
   try {
-    const response = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
+    const { insights, mode = "detailed" } = await req.json();
+    if (!insights || !Array.isArray(insights)) {
+      return new Response(JSON.stringify({ error: "Missing or invalid insights array" }), { status: 400 });
+    }
+
+    const summaryPrompt = `
+You are an expert HKDSE English Paper 2 marker.
+You will be given individual paragraph-level feedback and asked to provide overall band scores for the writing.
+
+Use the official HKDSE Paper 2 rubric to assign scores (1-7) for:
+- Content (C)
+- Language (L)
+- Organisation (O)
+
+Then explain the reasoning ${mode === "quick" ? "briefly in 2–3 sentences per domain." : "with detailed examples taken directly from the student's writing."}
+
+End with the band scores in the format:
+**Band Scores:**
+C: [score]  \nL: [score]  \nO: [score]
+
+Insights:
+${insights.join("\n\n")}`;
+
+    const completion = await fetch("https://dsegpt4marker.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2025-01-01-preview", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "api-key": process.env.AZURE_OPENAI_KEY
+        "api-key": process.env.OPENAI_API_KEY
       },
       body: JSON.stringify({
         messages: [
-          { role: "system", content: "You are a DSE English Paper 2 examiner." },
-          { role: "user", content: prompt }
+          { role: "system", content: "You are a professional English writing examiner for the HKDSE." },
+          { role: "user", content: summaryPrompt }
         ],
-        temperature: 0.3,
-        max_tokens: 700
+        max_tokens: 1000,
+        temperature: 0.5,
       })
     });
 
-    const data = await response.json();
-    const result = data.choices?.[0]?.message?.content?.trim();
-    res.status(200).json({ bandAnalysis: result || "⚠️ No summary returned." });
+    const data = await completion.json();
+    const bandAnalysis = data.choices?.[0]?.message?.content || "No summary returned.";
+    return new Response(JSON.stringify({ bandAnalysis }), { status: 200 });
   } catch (err) {
-    console.error("Summary scoring error:", err);
-    res.status(500).json({ error: "Failed to summarize bands." });
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
